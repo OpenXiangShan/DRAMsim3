@@ -19,6 +19,7 @@ ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::
 ComplexCoDRAMsim3::~ComplexCoDRAMsim3() {
     memory->PrintStats();
     delete memory;
+    memory = NULL;
 }
 
 void ComplexCoDRAMsim3::tick() {

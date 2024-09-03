@@ -1,6 +1,8 @@
 #include "cosimulation.h"
 #include "memory_system.h"
 
+#include "INIReader.h"
+
 dramsim3::MemorySystem *memory = NULL;
 
 ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir, uint64_t padding_time) {
@@ -9,11 +11,41 @@ ComplexCoDRAMsim3::ComplexCoDRAMsim3(const std::string &config_file, const std::
         abort();
     }
     dram_clock = 0;
+    auto reader = new INIReader(config_file);
+    if (reader->ParseError() < 0) {
+        std::cout << "Can't load " << config_file << std::endl;
+        abort();
+    }
+
+    const auto protocol = reader->Get("dram_structure", "protocol", "DDR3");
+    if (protocol == "DDR4" or protocol == "DDR5" or protocol == "DDR3") {
+        long cpu_freq_i = reader->GetInteger("other", "cpu_freq", 0);
+        long dram_freq_i = reader->GetInteger("other", "dram_freq", 0);
+        if (cpu_freq_i == 0 || dram_freq_i == 0) {
+            std::cout << "For cosim with xs, must specify CPU_FREQ and DRAM_FREQ in [other] section in the config file."
+                << std::endl;
+            abort();
+        } else {
+            CPU_FREQ = cpu_freq_i;
+            DRAM_FREQ = dram_freq_i;
+            CPU_CLOCK_CYCLE = 1.0 / CPU_FREQ;
+            DRAM_CLOCK_CYCLE = 1.0 / DRAM_FREQ;
+            std::cout << "CPU_FREQ: " << CPU_FREQ << " DRAM_FREQ: " << DRAM_FREQ << std::endl;
+            std::cout << "CPU_CLOCK_CYCLE: " << CPU_CLOCK_CYCLE
+                << " DRAM_CLOCK_CYCLE: " << DRAM_CLOCK_CYCLE << std::endl;
+        }
+    } else {
+        std::cout << "Unsupported DRAM protocol for xs cosim: " << protocol << std::endl;
+        abort();
+    }
+
     memory = new dramsim3::MemorySystem(config_file, output_dir,
         std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, false),
         std::bind(&ComplexCoDRAMsim3::callback, this, std::placeholders::_1, true));
     padding = padding_time;
     std::cout << "DRAMsim3 memory system initialized." << std::endl;
+
+    delete reader;
 }
 
 ComplexCoDRAMsim3::~ComplexCoDRAMsim3() {
@@ -23,8 +55,12 @@ ComplexCoDRAMsim3::~ComplexCoDRAMsim3() {
 }
 
 void ComplexCoDRAMsim3::tick() {
-    memory->ClockTick();
+    cpu_time += CPU_CLOCK_CYCLE;
     dram_clock++;
+    while (cpu_time >= next_dram_cycle_time) {
+        next_dram_cycle_time += DRAM_CLOCK_CYCLE;
+        memory->ClockTick();
+    }
 }
 
 bool ComplexCoDRAMsim3::will_accept(uint64_t address, bool is_write) {
@@ -83,7 +119,7 @@ void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
         auto resp = *iter;
         if (resp->req->address == addr && resp->req->is_write == is_write) {
             req_list.erase(iter);
-            resp->finish_time = resp->req_time + (get_clock_ticks() - resp->req_time) * CPU_FREQ_SCALE + padding;
+            resp->finish_time = resp->req_time + (get_clock_ticks() - resp->req_time) + padding;
             auto &queue = (resp->req->is_write) ? resp_write_queue : resp_read_queue;
             queue.push(resp);
             return;

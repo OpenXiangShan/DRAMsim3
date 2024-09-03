@@ -93,7 +93,12 @@ public:
 
 private:
     // CPU runs at 3GHz and DRAM runs at 1600MHz
-    const double CPU_FREQ_SCALE = 3000.0 / 1600.0;
+    double CPU_FREQ = 3000.0;
+    double DRAM_FREQ = 1600.0;
+    double CPU_CLOCK_CYCLE = 1.0 / CPU_FREQ;
+    double DRAM_CLOCK_CYCLE = 1.0 / DRAM_FREQ;
+    double cpu_time = 0.0;
+    double next_dram_cycle_time = 0.0;
     uint64_t padding = 0;
     std::mutex mtx;
 

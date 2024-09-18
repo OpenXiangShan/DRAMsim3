@@ -51,32 +51,6 @@ void BaseDRAMSystem::PrintEpochStats() {
 }
 
 void BaseDRAMSystem::PrintStats() {
-    // Finish epoch output, remove last comma and append ]
-    std::ofstream epoch_out(config_.json_epoch_name, std::ios_base::in |
-                                                         std::ios_base::out |
-                                                         std::ios_base::ate);
-    epoch_out.seekp(-2, std::ios_base::cur);
-    epoch_out.write("]", 1);
-    epoch_out.close();
-
-    std::ofstream json_out(config_.json_stats_name, std::ofstream::out);
-    json_out << "{";
-
-    // close it now so that each channel can handle it
-    json_out.close();
-    for (size_t i = 0; i < ctrls_.size(); i++) {
-        ctrls_[i]->PrintFinalStats();
-        if (i != ctrls_.size() - 1) {
-            std::ofstream chan_out(config_.json_stats_name, std::ofstream::app);
-            chan_out << "," << std::endl;
-        }
-    }
-    json_out.open(config_.json_stats_name, std::ofstream::app);
-    json_out << "}";
-
-#ifdef THERMAL
-    thermal_calc_.PrintFinalPT(clk_);
-#endif  // THERMAL
 }
 
 void BaseDRAMSystem::ResetStats() {

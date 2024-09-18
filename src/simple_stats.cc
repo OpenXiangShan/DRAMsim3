@@ -127,6 +127,7 @@ void SimpleStats::PrintFinalStats() {
         std::ofstream j_out(config_.json_stats_name, std::ofstream::app);
         j_out << "\"" << std::to_string(channel_id_) << "\":";
         j_out << j_data_;
+        j_out.close();
     }
 
     if (config_.output_level >= 1) {
@@ -138,6 +139,7 @@ void SimpleStats::PrintFinalStats() {
             PrintStatText(txt_out, it.first, it.second,
                           header_descs_[it.first]);
         }
+        txt_out.close();
     }
 
     print_pairs_.clear();

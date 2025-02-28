@@ -78,7 +78,7 @@ class ComplexCoDRAMsim3 : public CoDRAMsim3 {
 public:
     // Initialize a DRAMsim3 model.
     ComplexCoDRAMsim3(const std::string &config_file, const std::string &output_dir,
-        uint64_t padding_time = 66);
+        uint64_t padding_time = 180);
     ~ComplexCoDRAMsim3();
     // Tick the DRAM model.
     void tick();

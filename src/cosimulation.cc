@@ -64,15 +64,16 @@ void ComplexCoDRAMsim3::tick() {
 }
 
 bool ComplexCoDRAMsim3::will_accept(uint64_t address, bool is_write) {
-    return memory->WillAcceptTransaction(address, is_write);
+    return true;
+    // return memory->WillAcceptTransaction(address, is_write);
 }
 
 bool ComplexCoDRAMsim3::add_request(const CoDRAMRequest *request) {
-#ifdef COSIM_DOUBLE_CHECK_ACCEPT
-    if (memory->WillAcceptTransaction(request->address, request->is_write)) {
-#else
+// #ifdef COSIM_DOUBLE_CHECK_ACCEPT
+//     if (memory->WillAcceptTransaction(request->address, request->is_write)) {
+// #else
     if (true) {
-#endif
+// #endif
         // if (request->is_write) {
         //     std::cout << "send write request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
         // }
@@ -80,11 +81,12 @@ bool ComplexCoDRAMsim3::add_request(const CoDRAMRequest *request) {
         //     std::cout << "send read request with addr 0x" << std::hex << request->address << " to DRAMsim3" << std::endl;
         // }
         std::lock_guard<std::mutex> guard(mtx);
-        memory->AddTransaction(request->address, request->is_write);
+        // memory->AddTransaction(request->address, request->is_write);
         req_list.push_back(new CoDRAMResponse(request, get_clock_ticks()));
-        return true;
+        // std::cout << "add request with addr 0x" << std::hex << request->address << " to DRAMsim3" << " at " << get_clock_ticks() << std::endl;
     }
-    return false;
+    callback(request->address, request->is_write);
+    return true;
 }
 
 CoDRAMResponse *ComplexCoDRAMsim3::check_read_response() {
@@ -104,6 +106,7 @@ CoDRAMResponse *ComplexCoDRAMsim3::check_response(std::queue<CoDRAMResponse*> &r
     if (resp->finish_time <= now) {
         resp->resp_time = now;
         resp_queue.pop();
+        // std::cout << "check response with addr 0x" << std::hex << resp->req->address << " at " << now << std::endl;
         return resp;
     }
     return NULL;
@@ -122,6 +125,7 @@ void ComplexCoDRAMsim3::callback(uint64_t addr, bool is_write) {
             resp->finish_time = resp->req_time + (get_clock_ticks() - resp->req_time) + padding;
             auto &queue = (resp->req->is_write) ? resp_write_queue : resp_read_queue;
             queue.push(resp);
+            // std::cout << "callback with addr 0x" << std::hex << resp->req->address << " at " << get_clock_ticks() << std::endl;
             return;
         }
         iter++;
